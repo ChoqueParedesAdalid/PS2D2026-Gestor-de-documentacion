@@ -3,7 +3,7 @@
 Sistema web para el control de versiones y revisión iterativa de documentos de tesis universitarias.
 
 ## Integrantes
-- RizzPB
+- RazielPB
 - ChoqueParedesAdalid
 - Al3xis_LB
 - JeysiM

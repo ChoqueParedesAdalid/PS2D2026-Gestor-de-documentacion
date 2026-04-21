@@ -18,7 +18,7 @@
 <body>
 
     <!-- NAVBAR -->
-    <nav class="navbar">
+        <nav class="navbar">
         <div class="navbar-content">
             <div class="navbar-brand">
                 <div class="brand-logos">
@@ -34,12 +34,19 @@
                 </div>
             </div>
 
-            <ul class="navbar-nav">
-                <li><a href="#inicio"><i class="fas fa-home"></i> Inicio</a></li>
-                <li><a href="#caracteristicas"><i class="fas fa-chart-bar"></i> Características</a></li>
-                <li><a href="#roles"><i class="fas fa-users"></i> Roles</a></li>
-                <li><a href="#flujo"><i class="fas fa-cogs"></i> Flujo de Trabajo</a></li>
-                <li><a href="#contacto" class="btn-navbar-login"><i class="fas fa-sign-in-alt"></i> Ingresar</a></li>
+            <!-- Botón Hamburguesa (solo visible en móvil) -->
+            <button class="navbar-toggle" aria-label="Abrir menú" onclick="toggleMenu()">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </button>
+
+            <ul class="navbar-nav" id="navMenu">
+                <li><a href="#inicio" onclick="closeMenu()"><i class="fas fa-home"></i> Inicio</a></li>
+                <li><a href="#caracteristicas" onclick="closeMenu()"><i class="fas fa-chart-bar"></i> Características</a></li>
+                <li><a href="#flujo" onclick="closeMenu()"><i class="fas fa-cogs"></i> Flujo de Trabajo</a></li>
+                <li><a href="#roles" onclick="closeMenu()"><i class="fas fa-users"></i> Roles</a></li>
+                <li><a href="{{ route('login') }}" class="btn-navbar-login" onclick="closeMenu()"><i class="fas fa-sign-in-alt"></i> Ingresar</a></li>
             </ul>
         </div>
     </nav>
@@ -66,7 +73,7 @@
                 tutores y revisores, y avanza con claridad hacia tu titulación.
             </p>
 
-            <a href="#contacto" class="btn-hero-access">
+            <a href="{{ route('login') }}" class="btn-hero-access">
                 <i class="fas fa-arrow-right-to-bracket"></i> ACCEDER AL SISTEMA
             </a>
         </div>
@@ -237,8 +244,8 @@
                 Centraliza todo el proceso de gestión documental de tu facultad 
                 en un solo sistema claro y organizado.
             </p>
-            <button class="btn-cta">
-                INGRESAR AL SISTEMA <i class="fas fa-arrow-right"></i>
+            <button class="btn-cta"><a href="{{ route('login') }}">
+                INGRESAR AL SISTEMA <i class="fas fa-arrow-right"></i></a>
             </button>
         </div>
     </section>
@@ -276,5 +283,24 @@
             });
         });
     </script>
+        <script>
+        function toggleMenu() {
+            const nav = document.getElementById('navMenu');
+            nav.classList.toggle('active');
+        }
+        function closeMenu() {
+            document.getElementById('navMenu').classList.remove('active');
+        }
+        // Smooth scroll para anclas
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+</html>
 </body>
 </html>

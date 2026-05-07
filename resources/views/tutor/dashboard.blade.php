@@ -12,7 +12,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-gray-300 text-sm">Total Tutorados</p>
-                    <p class="text-3xl font-bold text-white mt-1">{{ $totalTutorados ?? 12 }}</p>
+                    <p class="text-3xl font-bold text-white mt-1">{{ $totalTutorados ?? 0 }}</p>
                 </div>
                 <div class="bg-red-900 bg-opacity-50 rounded-full p-3">
                     <i class="fas fa-users text-red-400 text-xl"></i>
@@ -24,7 +24,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-gray-300 text-sm">Documentos Pendientes</p>
-                    <p class="text-3xl font-bold text-white mt-1">{{ $pendientes ?? 8 }}</p>
+                    <p class="text-3xl font-bold text-white mt-1">{{ $pendientes ?? 0 }}</p>
                 </div>
                 <div class="bg-yellow-900 bg-opacity-50 rounded-full p-3">
                     <i class="fas fa-clock text-yellow-400 text-xl"></i>
@@ -36,7 +36,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-gray-300 text-sm">Documentos Aprobados</p>
-                    <p class="text-3xl font-bold text-white mt-1">{{ $aprobados ?? 24 }}</p>
+                    <p class="text-3xl font-bold text-white mt-1">{{ $aprobados ?? 0 }}</p>
                 </div>
                 <div class="bg-green-900 bg-opacity-50 rounded-full p-3">
                     <i class="fas fa-check-circle text-green-400 text-xl"></i>
@@ -48,7 +48,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-gray-300 text-sm">En Revisión</p>
-                    <p class="text-3xl font-bold text-white mt-1">{{ $enRevision ?? 5 }}</p>
+                    <p class="text-3xl font-bold text-white mt-1">{{ $enRevision ?? 0 }}</p>
                 </div>
                 <div class="bg-purple-900 bg-opacity-50 rounded-full p-3">
                     <i class="fas fa-eye text-purple-400 text-xl"></i>
@@ -67,21 +67,29 @@
             </div>
             <div class="p-6">
                 <div class="space-y-4">
-                    @for($i = 0; $i < 5; $i++)
+                    @forelse($actividadReciente ?? [] as $actividad)
                     <div class="flex items-start space-x-4 p-3 hover:bg-white hover:bg-opacity-10 rounded-lg transition">
                         <div class="bg-red-900 bg-opacity-50 rounded-full p-2">
                             <i class="fas fa-file-upload text-red-400"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="text-sm font-medium text-white">Estudiante {{ $i + 1 }} subió un nuevo documento</p>
-                            <p class="text-xs text-gray-400">Proyecto de Grado - Capítulo {{ $i + 1 }}</p>
-                            <p class="text-xs text-gray-500 mt-1">Hace {{ $i + 1 }} hora{{ $i > 0 ? 's' : '' }}</p>
+                            <p class="text-sm font-medium text-white">
+                                {{ $actividad->estudiante->nombres }} {{ $actividad->estudiante->apellidos }} subió un nuevo documento
+                            </p>
+                            <p class="text-xs text-gray-400">
+                                {{ $actividad->tarea->titulo ?? 'Documento de proyecto' }}
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Hace {{ $actividad->created_at->diffForHumans() }}
+                            </p>
                         </div>
-                        <button class="text-red-400 hover:text-red-300 text-sm font-medium">
+                        <a href="{{ route('tutor.revisar', $actividad->id) }}" class="text-red-400 hover:text-red-300 text-sm font-medium">
                             Revisar
-                        </button>
+                        </a>
                     </div>
-                    @endfor
+                    @empty
+                    <p class="text-gray-400 text-center py-4">No hay actividad reciente</p>
+                    @endforelse
                 </div>
             </div>
         </div>

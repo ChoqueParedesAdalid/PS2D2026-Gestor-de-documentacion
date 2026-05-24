@@ -6,47 +6,34 @@
 @section('content')
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     
-    <!-- VISOR DE DOCUMENTO -->
+    <!-- INFORMACIÓN DEL DOCUMENTO -->
     <div class="lg:col-span-2 card-dark rounded-lg shadow">
-        <div class="px-6 py-4 border-b border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div>
-                <h3 class="text-lg font-semibold text-white">{{ $documento->archivo_nombre_original ?? 'Documento' }}</h3>
-                <p class="text-sm text-gray-400">
-                    Estudiante: {{ $documento->estudiante->nombres ?? 'N/A' }} {{ $documento->estudiante->apellidos ?? '' }} | 
-                    Versión {{ $documento->version ?? 1 }}.0
-                </p>
-            </div>
-            <div class="flex space-x-2">
-                @if($documento->archivo_ruta ?? false)
-                <a href="{{ asset($documento->archivo_ruta) }}" target="_blank" 
-                   class="bg-black bg-opacity-50 text-white px-3 py-2 rounded-lg hover:bg-opacity-70 transition">
-                    <i class="fas fa-download mr-2"></i>Descargar
-                </a>
-                @endif
-                <button onclick="toggleFullscreen()" class="bg-red-700 text-white px-3 py-2 rounded-lg hover:bg-red-600 transition">
-                    <i class="fas fa-expand mr-2"></i>Pantalla Completa
-                </button>
-            </div>
+        <div class="px-6 py-4 border-b border-gray-700">
+            <h3 class="text-lg font-semibold text-white">{{ $documento->archivo_nombre_original ?? 'Documento' }}</h3>
+            <p class="text-sm text-gray-400 mt-1">
+                Estudiante: {{ $documento->estudiante->nombres ?? 'N/A' }} {{ $documento->estudiante->apellidos ?? '' }} | 
+                Versión {{ $documento->version ?? 1 }}.0
+            </p>
         </div>
         
-        <div class="p-6 bg-black bg-opacity-30 h-[600px] overflow-auto" id="visor-container">
-            @if($documento->archivo_ruta ?? false)
-                <!-- Si es PDF, mostrar embed; si no, mostrar mensaje -->
-                @if(pathinfo($documento->archivo_ruta, PATHINFO_EXTENSION) === 'pdf')
-                <embed src="{{ asset($documento->archivo_ruta) }}" type="application/pdf" 
-                       class="w-full h-full min-h-[800px] bg-white" />
-                @else
-                <div class="bg-white shadow-lg p-8 max-w-3xl mx-auto min-h-[800px] text-center">
-                    <i class="fas fa-file text-6xl text-gray-400 mb-4"></i>
-                    <p class="text-gray-700">Vista previa no disponible para este formato</p>
-                    <a href="{{ asset($documento->archivo_ruta) }}" target="_blank" 
-                       class="text-red-600 hover:underline mt-2 inline-block">
-                        Abrir documento en nueva pestaña →
-                    </a>
-                </div>
-                @endif
+        <div class="p-6 bg-black bg-opacity-30">
+            <!-- Solo botón de descarga, sin vista previa -->
+            @if($documento->archivo_ruta)
+            <div class="bg-white bg-opacity-5 rounded-lg p-8 text-center">
+                <i class="fas fa-file-pdf text-6xl text-red-400 mb-4"></i>
+                <p class="text-gray-300 mb-4">Documento PDF listo para descargar</p>
+                <a href="{{ asset('storage/' . $documento->archivo_ruta) }}" 
+                   target="_blank"
+                   class="inline-flex items-center bg-red-700 hover:bg-red-600 text-white px-6 py-3 rounded-lg transition">
+                    <i class="fas fa-download mr-2"></i>Descargar Documento
+                </a>
+                <p class="text-xs text-gray-500 mt-4">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    El archivo se abrirá en una nueva pestaña
+                </p>
+            </div>
             @else
-            <div class="bg-white shadow-lg p-8 max-w-3xl mx-auto min-h-[800px] text-center text-gray-500">
+            <div class="bg-white bg-opacity-5 rounded-lg p-8 text-center text-gray-500">
                 <i class="fas fa-file-alt text-6xl mb-4"></i>
                 <p>Documento no disponible</p>
             </div>
@@ -54,7 +41,7 @@
         </div>
     </div>
 
-    <!-- PANEL DE OBSERVACIONES -->
+    <!-- PANEL DE OBSERVACIONES (Se mantiene igual) -->
     <div class="card-dark rounded-lg shadow">
         <div class="px-6 py-4 border-b border-gray-700">
             <h3 class="text-lg font-semibold text-white">
@@ -98,66 +85,51 @@
             </form>
 
             <!-- LISTA DE OBSERVACIONES -->
+                        <!--DE TODAS LAS VERSIONES -->
             <div class="border-t border-gray-700 pt-4">
-                <h4 class="text-sm font-semibold text-gray-300 mb-3">Observaciones Existentes</h4>
-                
-                <div id="lista-observaciones" class="space-y-3 max-h-64 overflow-y-auto">
-                    @forelse($documento->observaciones ?? [] as $obs)
-                    <div class="bg-yellow-900 bg-opacity-30 border border-yellow-700 rounded-lg p-3">
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="text-xs font-semibold text-yellow-300 bg-yellow-900 bg-opacity-50 px-2 py-1 rounded">
-                                {{ $obs->seccion_documento ?? 'General' }}
-                            </span>
-                            <span class="text-xs text-gray-400">{{ $obs->created_at->diffForHumans() }}</span>
-                        </div>
-                        <p class="text-sm text-gray-300">{{ $obs->comentario }}</p>
-                        <div class="mt-2 flex space-x-2">
-                            @if(!$obs->resuelta)
-                            <button class="text-xs text-green-400 hover:text-green-300 font-medium" 
-                                    onclick="marcarCorregida({{ $obs->id }})">
-                                <i class="fas fa-check mr-1"></i>Corregida
-                            </button>
-                            @endif
-                            <button class="text-xs text-red-400 hover:text-red-300 font-medium" 
-                                    onclick="eliminarObservacion({{ $obs->id }})">
-                                <i class="fas fa-trash mr-1"></i>Eliminar
-                            </button>
-                        </div>
-                    </div>
-                    @empty
-                    <p class="text-gray-400 text-center py-4 text-sm">Sin observaciones aún</p>
-                    @endforelse
-                </div>
-            </div>
-
-            <!-- CHECKLIST DE CORRECCIONES -->
-            <div class="border-t border-gray-700 pt-4 mt-4">
                 <h4 class="text-sm font-semibold text-gray-300 mb-3">
-                    <i class="fas fa-clipboard-check mr-2"></i>Checklist
+                    <i class="fas fa-history mr-2"></i>
+                    Observaciones de todas las versiones
                 </h4>
                 
-                <div class="space-y-2">
-                    <label class="flex items-center">
-                        <input type="checkbox" class="h-4 w-4 text-red-600 rounded focus:ring-red-500 bg-black bg-opacity-50 border-gray-600">
-                        <span class="ml-2 text-sm text-gray-300">Ortografía y redacción</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input type="checkbox" class="h-4 w-4 text-red-600 rounded focus:ring-red-500 bg-black bg-opacity-50 border-gray-600">
-                        <span class="ml-2 text-sm text-gray-300">Formato APA</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input type="checkbox" class="h-4 w-4 text-red-600 rounded focus:ring-red-500 bg-black bg-opacity-50 border-gray-600">
-                        <span class="ml-2 text-sm text-gray-300">Coherencia de objetivos</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input type="checkbox" class="h-4 w-4 text-red-600 rounded focus:ring-red-500 bg-black bg-opacity-50 border-gray-600">
-                        <span class="ml-2 text-sm text-gray-300">Metodología clara</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input type="checkbox" class="h-4 w-4 text-red-600 rounded focus:ring-red-500 bg-black bg-opacity-50 border-gray-600">
-                        <span class="ml-2 text-sm text-gray-300">Bibliografía actualizada</span>
-                    </label>
-                </div>
+                @if(isset($todasLasObservaciones) && $todasLasObservaciones->isNotEmpty())
+                    <div id="lista-observaciones" class="space-y-3 max-h-64 overflow-y-auto">
+                        @foreach($todasLasObservaciones as $obs)
+                        <div class="bg-yellow-900 bg-opacity-30 border border-yellow-700 rounded-lg p-3">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs font-semibold text-yellow-300 bg-yellow-900 bg-opacity-50 px-2 py-1 rounded">
+                                        {{ $obs->seccion_documento ?? 'General' }}
+                                    </span>
+                                    <span class="text-xs text-gray-400">
+                                        v{{ $obs->documento->version ?? '?' }}
+                                    </span>
+                                </div>
+                                <span class="text-xs text-gray-400">{{ $obs->created_at?->diffForHumans() ?? '' }}</span>
+                            </div>
+                            <p class="text-sm text-gray-300">{{ $obs->comentario }}</p>
+                            <div class="mt-2 flex space-x-2">
+                                @if(!$obs->resuelta)
+                                <button class="text-xs text-green-400 hover:text-green-300 font-medium" 
+                                        onclick="marcarCorregida({{ $obs->id }})">
+                                    <i class="fas fa-check mr-1"></i>Corregida
+                                </button>
+                                @else
+                                <span class="text-xs text-green-400">
+                                    <i class="fas fa-check-circle mr-1"></i>Corregida
+                                </span>
+                                @endif
+                                <button class="text-xs text-red-400 hover:text-red-300 font-medium" 
+                                        onclick="eliminarObservacion({{ $obs->id }})">
+                                    <i class="fas fa-trash mr-1"></i>Eliminar
+                                </button>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-gray-400 text-center py-4 text-sm">Sin observaciones aún</p>
+                @endif
             </div>
 
             <!-- BOTONES DE ACCIÓN PRINCIPAL -->
@@ -189,68 +161,196 @@
                 </div>
                 @endif
                 
-                <a href="{{ route('tutor.documentos') }}" 
-                   class="block w-full text-center bg-black bg-opacity-50 text-gray-300 px-4 py-2 rounded-lg hover:bg-opacity-70 transition">
-                    <i class="fas fa-arrow-left mr-2"></i>Volver a Documentos
+                <a href="{{ route('tutor.tareas') }}" 
+                    class="block w-full text-center bg-black bg-opacity-50 text-gray-300 px-4 py-2 rounded-lg hover:bg-opacity-70 transition">
+                    <i class="fas fa-arrow-left mr-2"></i>Volver a Tareas
                 </a>
             </div>
         </div>
     </div>
 </div>
-
 @push('scripts')
 <script>
-// Pantalla completa para el visor
-function toggleFullscreen() {
-    const container = document.getElementById('visor-container');
-    if (!document.fullscreenElement) {
-        container.requestFullscreen().catch(err => {
-            console.log(`Error: ${err.message}`);
-        });
-    } else {
-        document.exitFullscreen();
+// Función para mostrar notificaciones toast
+function showToast(message, type = 'success') {
+    // Crear elemento toast
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg z-50 transform transition-all duration-300 translate-x-full`;
+    
+    // Colores según el tipo
+    if (type === 'success') {
+        toast.className += ' bg-green-900 bg-opacity-90 border border-green-600 text-green-100';
+    } else if (type === 'error') {
+        toast.className += ' bg-red-900 bg-opacity-90 border border-red-600 text-red-100';
+    } else if (type === 'warning') {
+        toast.className += ' bg-yellow-900 bg-opacity-90 border border-yellow-600 text-yellow-100';
     }
+    
+    // Icono según el tipo
+    let icon = '';
+    if (type === 'success') {
+        icon = '<i class="fas fa-check-circle mr-2"></i>';
+    } else if (type === 'error') {
+        icon = '<i class="fas fa-exclamation-circle mr-2"></i>';
+    } else if (type === 'warning') {
+        icon = '<i class="fas fa-exclamation-triangle mr-2"></i>';
+    }
+    
+    toast.innerHTML = `${icon}${message}`;
+    
+    // Agregar al body
+    document.body.appendChild(toast);
+    
+    // Animar entrada
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Eliminar después de 5 segundos
+    setTimeout(() => {
+        toast.classList.add('translate-x-full');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 5000);
 }
 
-// Marcar observación como corregida (AJAX)
+// Agregar observación con AJAX
+document.querySelector('form[action="{{ route('tutor.observacion.store') }}"]')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = this;
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const textarea = form.querySelector('textarea[name="contenido"]');
+    
+    // Deshabilitar botón durante la petición
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Guardando...';
+    
+    fetch('{{ route('tutor.observacion.store') }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+            'Accept': 'application/json',
+        },
+        body: formData,
+    })
+    .then(response => {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf('application/json') !== -1) {
+            return response.json();
+        } else {
+            throw new Error('La respuesta no es JSON');
+        }
+    })
+    .then(data => {
+        if (data.success) {
+            // Agregar observación a la lista
+            const lista = document.getElementById('lista-observaciones');
+            const emptyMsg = lista?.querySelector('.text-center');
+            if (emptyMsg) emptyMsg.remove();
+            
+            const nuevaObs = document.createElement('div');
+            nuevaObs.className = 'bg-yellow-900 bg-opacity-30 border border-yellow-700 rounded-lg p-3 mb-3';
+            nuevaObs.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-semibold text-yellow-300 bg-yellow-900 bg-opacity-50 px-2 py-1 rounded">
+                        ${formData.get('seccion') || 'General'}
+                    </span>
+                    <span class="text-xs text-gray-400">${data.observacion.created_at}</span>
+                </div>
+                <p class="text-sm text-gray-300">${data.observacion.comentario}</p>
+                <div class="mt-2 flex space-x-2">
+                    <button class="text-xs text-green-400 hover:text-green-300 font-medium" onclick="marcarCorregida(${data.observacion.id})">
+                        <i class="fas fa-check mr-1"></i>Marcar como corregida
+                    </button>
+                    <button class="text-xs text-red-400 hover:text-red-300 font-medium" onclick="eliminarObservacion(${data.observacion.id})">
+                        <i class="fas fa-trash mr-1"></i>Eliminar
+                    </button>
+                </div>
+            `;
+            
+            if (lista) {
+                lista.insertBefore(nuevaObs, lista.firstChild);
+            }
+            
+            // Limpiar formulario
+            if (textarea) textarea.value = '';
+            form.querySelector('select[name="seccion"]')?.querySelectorAll('option').forEach(opt => opt.selected = false);
+            
+            // ✅ Mostrar notificación toast en lugar de alert
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.message || 'Error al guardar la observación', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error al guardar la observación', 'error');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Agregar Observación';
+    });
+});
+
+// Marcar observación como corregida
 function marcarCorregida(obsId) {
     if (!confirm('¿Marcar esta observación como corregida?')) return;
     
     fetch(`/tutor/observacion/${obsId}/corregida`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+            'Accept': 'application/json',
         },
-        body: JSON.stringify({ resuelta: true })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            location.reload();
+            // Mostrar notificación toast en lugar de alert
+            showToast(data.message, 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showToast(data.message || 'Error al marcar', 'error');
         }
     })
-    .catch(error => console.error('Error:', error));
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error al marcar la observación', 'error');
+    });
 }
 
-// Eliminar observación (AJAX)
+// Eliminar observación
 function eliminarObservacion(obsId) {
     if (!confirm('¿Eliminar esta observación?')) return;
     
     fetch(`/tutor/observacion/${obsId}`, {
         method: 'DELETE',
         headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        }
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+            'Accept': 'application/json',
+        },
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            location.reload();
+            // Mostrar notificación toast en lugar de alert
+            showToast(data.message, 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showToast(data.message || 'Error al eliminar', 'error');
         }
     })
-    .catch(error => console.error('Error:', error));
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error al eliminar la observación', 'error');
+    });
 }
 </script>
 @endpush

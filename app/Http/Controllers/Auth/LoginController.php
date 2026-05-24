@@ -42,12 +42,16 @@ class LoginController extends Controller
             ]);
         }
 
-        // Intentar autenticar (usando password_hash como campo de contraseña)
+        // Intentar autenticar
         if (Auth::attempt(['email_institucional' => $credentials['email'], 'password' => $credentials['password']], $request->filled('remember'))) {
             
             $request->session()->regenerate();
 
-            // Redirección según rol del usuario
+            // ✅ DETECTAR SI TIENE DOBLE ROL (Tutor <-> Tribunal)
+            if ($this->tieneDobleRol($user)) {
+                return redirect()->route('auth.role.select');
+            }
+
             return $this->redireccionarPorRol($user);
         }
 
@@ -79,7 +83,6 @@ class LoginController extends Controller
                 return redirect()->route('director.dashboard');
             
             default:
-                // Redirección por defecto si el rol no está definido
                 return redirect()->route('home');
         }
     }
@@ -91,9 +94,107 @@ class LoginController extends Controller
     {
         Auth::logout();
         
+        // Invalidar la sesión
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         
-        return redirect()->route('login')->with('success', 'Sesión cerrada correctamente.');
+        // Redirigir a la Landing Page
+        return redirect()->route('home');
+    }
+
+    /**
+     * Verificar si el usuario tiene asignaciones cruzadas (Doble Rol)
+     */
+    private function tieneDobleRol(User $user)
+    {
+        $rol = $user->rol?->nombre;
+
+        // Si es Tutor, verificar si también es Tribunal
+        if ($rol === 'tutor') {
+            return \App\Models\AsignacionTribunal::where('tribunal_id', $user->id)->where('activo', true)->exists();
+        }
+
+        // Si es Tribunal, verificar si también es Tutor
+        if ($rol === 'tribunal') {
+            return \App\Models\AsignacionTutor::where('tutor_id', $user->id)->where('activo', true)->exists();
+        }
+
+        return false;
+    }
+
+    /**
+     * Mostrar vista de selección de rol
+     */
+    public function showRoleSelect()
+    {
+        $user = Auth::user();
+        $rol = $user->rol?->nombre;
+        
+        // Determinar qué opciones mostrar
+        $opciones = [];
+        
+        // Siempre mostrar su rol principal
+        $opciones[] = [
+            'key' => $rol, 
+            'label' => ucfirst($rol), 
+            'route' => "{$rol}.dashboard", 
+            'icon' => 'fa-check-circle',
+            'desc' => "Acceder como {$rol}"
+        ];
+
+        // Si es Tutor, mostrar opción Tribunal
+        if ($rol === 'tutor') {
+            $opciones[] = [
+                'key' => 'tribunal', 
+                'label' => 'Tribunal', 
+                'route' => 'tribunal.dashboard', 
+                'icon' => 'fa-gavel',
+                'desc' => 'Revisar documentos como jurado'
+            ];
+        }
+        
+        // Si es Tribunal, mostrar opción Tutor
+        if ($rol === 'tribunal') {
+            $opciones[] = [
+                'key' => 'tutor', 
+                'label' => 'Tutor', 
+                'route' => 'tutor.dashboard', 
+                'icon' => 'fa-chalkboard-teacher',
+                'desc' => 'Gestionar mis tutorados'
+            ];
+        }
+
+        return view('auth.select-role', compact('user', 'opciones'));
+    }
+
+    /**
+     * Procesar selección de rol
+     */
+    public function selectRole(Request $request)
+    {
+        $request->validate([
+            'selected_role' => 'required|string|in:tutor,tribunal'
+        ]);
+
+        $user = Auth::user();
+        $rolPrincipal = $user->rol?->nombre;
+        $seleccion = $request->input('selected_role');
+
+        // Validar que la selección sea válida para este usuario
+        $esValido = false;
+        
+        if ($rolPrincipal === 'tutor' && $seleccion === 'tribunal') {
+            $esValido = \App\Models\AsignacionTribunal::where('tribunal_id', $user->id)->where('activo', true)->exists();
+        } elseif ($rolPrincipal === 'tribunal' && $seleccion === 'tutor') {
+            $esValido = \App\Models\AsignacionTutor::where('tutor_id', $user->id)->where('activo', true)->exists();
+        } elseif ($rolPrincipal === $seleccion) {
+            $esValido = true;
+        }
+
+        if (!$esValido) {
+            return back()->with('error', 'No tienes acceso a ese rol.');
+        }
+
+        return redirect()->route("{$seleccion}.dashboard");
     }
 }

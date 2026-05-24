@@ -217,5 +217,62 @@ class TutorTestDataSeeder extends Seeder
         echo "\n";
         echo "🌐 Ahora visita: http://127.0.0.1:8000/tutor\n";
         echo "\n";
+
+        // ==================================================
+        // 11. CREAR ASIGNACIONES DE TRIBUNAL (para pruebas)
+        // ==================================================
+
+        // Crear roles de tribunal si no existen
+        $rolTribunal = Role::where('nombre', 'tribunal')->first();
+        if (!$rolTribunal) {
+            $rolTribunal = Role::create([
+                'nombre' => 'tribunal',
+                'descripcion' => 'Docente-ingeniero que evalúa documento final',
+            ]);
+        }
+
+        // Crear tribunales de prueba
+        $tribunal1 = User::firstOrCreate(
+        ['email_institucional' => 'jpinto@univalle.edu'],
+        [
+            'nombres' => 'Juan',
+            'apellidos' => 'Pinto',
+            'password_hash' => bcrypt('password123'),
+            'role_id' => $rolTribunal->id,
+            'activo' => true,
+        ]
+        );
+
+        $tribunal2 = User::firstOrCreate(
+            ['email_institucional' => 'wquispe@univalle.edu'],
+            [
+                'nombres' => 'Wiskity',
+                'apellidos' => 'Quispe',
+                'password_hash' => bcrypt('password123'),
+                'role_id' => $rolTribunal->id,
+                'activo' => true,
+            ]
+        );
+
+        // Asignar tribunales al estudiante
+        \App\Models\AsignacionTribunal::firstOrCreate(
+        ['inscripcion_id' => $inscripcion->id, 'tribunal_id' => $tribunal1->id],
+        [
+            'asignado_por' => 1,
+            'asignado_en' => now(),
+            'activo' => true,
+        ]
+        );
+
+        \App\Models\AsignacionTribunal::firstOrCreate(
+        ['inscripcion_id' => $inscripcion->id, 'tribunal_id' => $tribunal2->id],
+        [
+            'asignado_por' => 1,
+            'asignado_en' => now(),
+            'activo' => true,
+        ]
+        );
+
+        echo "✅ Tribunales asignados: {$tribunal1->nombres}, {$tribunal2->nombres}\n";
     }
 }

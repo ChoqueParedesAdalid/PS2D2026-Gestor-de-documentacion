@@ -123,14 +123,14 @@ public function tareas(Request $request)
 
     // Aplicar filtros (PRIORIZANDO COMPLETADO)
     if ($filtro === 'completado') {
-        // ✅ Completado: Tiene documento entregado (sin importar fecha)
+        // Completado: Tiene documento entregado (sin importar fecha)
         $query->whereHas('documentos', function($q) use ($estudiante) {
                     $q->where('estudiante_id', $estudiante->id);
                 })
               ->orderBy('fecha_limite', 'desc');
               
     } elseif ($filtro === 'vencida') {
-        // ✅ Vencida: NO tiene documento Y fecha <= now
+        // Vencida: NO tiene documento Y fecha <= now
         $query->whereDoesntHave('documentos', function($q) use ($estudiante) {
                     $q->where('estudiante_id', $estudiante->id);
                 })

@@ -38,4 +38,8 @@ class Materia extends Model
     {
         return $this->hasMany(Tarea::class, 'materia_id', 'id');
     }
+    public function docenteCargo()
+    {
+        return $this->belongsTo(User::class, 'docente_cargo_id', 'id');
+    }
 }

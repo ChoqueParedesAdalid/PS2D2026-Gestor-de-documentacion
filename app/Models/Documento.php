@@ -78,11 +78,11 @@ class Documento extends Model
     /**
      * Relación: Tiene historial de versiones
      */
-    public function historial()
-    {
-        return $this->hasMany(DocumentoHistorial::class, 'documento_id', 'id')
-                    ->orderBy('version', 'desc');
-    }
+    //public function historial()
+    //{
+        //return $this->hasMany(DocumentoHistorial::class, 'documento_id', 'id')
+                   // ->orderBy('version', 'desc');
+    //}
 
     /**
      * Relación: Pertenece a un Proyecto (a través de la tarea o estudiante)

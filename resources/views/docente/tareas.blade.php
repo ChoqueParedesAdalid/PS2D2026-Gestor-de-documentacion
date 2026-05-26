@@ -185,31 +185,72 @@
             </button>
         </div>
         <form action="{{ route('docente.tareas.crear') }}" method="POST">
-            @csrf
-            <input type="hidden" name="materia_id" value="{{ $materia->id }}">
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Título</label>
-                    <input type="text" name="titulo" required class="w-full px-3 py-2 bg-black bg-opacity-50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Descripción</label>
-                    <textarea name="descripcion" rows="3" class="w-full px-3 py-2 bg-black bg-opacity-50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Fecha Límite</label>
-                    <input type="datetime-local" name="fecha_limite" required class="w-full px-3 py-2 bg-black bg-opacity-50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500">
-                </div>
-            </div>
-            
-            <div class="mt-6 flex space-x-3">
-                <button type="button" onclick="document.getElementById('modalCrearTarea').classList.add('hidden')" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">Cancelar</button>
-                <button type="submit" class="flex-1 px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-lg transition">Crear</button>
-            </div>
-        </form>
+    @csrf
+    <input type="hidden" name="materia_id" value="{{ $materia->id }}">
+    
+    <div class="space-y-4">
+        <!-- Título -->
+        <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Título</label>
+            <input type="text" name="titulo" required 
+                   class="w-full px-3 py-2 bg-black bg-opacity-50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                   value="{{ old('titulo') }}">
+            @error('titulo') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+        </div>
+        
+        <!-- Descripción -->
+        <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Descripción</label>
+            <textarea name="descripcion" rows="3" required
+                      class="w-full px-3 py-2 bg-black bg-opacity-50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500">{{ old('descripcion') }}</textarea>
+            @error('descripcion') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+        </div>
+        
+        <!-- ✅ Tipo de Documento (NUEVO) -->
+        <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Tipo de Documento</label>
+            <select name="tipo_documento" required 
+                    class="w-full px-3 py-2 bg-black bg-opacity-50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500">
+                <option value="">Seleccionar tipo...</option>
+                <option value="anteproyecto" {{ old('tipo_documento') == 'anteproyecto' ? 'selected' : '' }}>Anteproyecto</option>
+                <option value="documento_final" {{ old('tipo_documento') == 'documento_final' ? 'selected' : '' }}>Documento Final</option>
+                <option value="anexos" {{ old('tipo_documento') == 'anexos' ? 'selected' : '' }}>Anexos</option>
+                <option value="otro" {{ old('tipo_documento') == 'otro' ? 'selected' : '' }}>Otro</option>
+            </select>
+            @error('tipo_documento') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+        </div>
+        
+        <!-- Fecha Límite -->
+        <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Fecha Límite</label>
+            <input type="datetime-local" name="fecha_limite" required 
+                   class="w-full px-3 py-2 bg-black bg-opacity-50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                   value="{{ old('fecha_limite') }}">
+            @error('fecha_limite') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+        </div>
+    </div>
+    
+    <!-- Mostrar errores generales -->
+    @if($errors->any())
+    <div class="bg-red-900/70 border border-red-600 text-red-100 px-4 py-3 rounded mb-4 text-sm">
+        <ul class="list-disc list-inside">
+            @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+    
+    <div class="mt-6 flex space-x-3">
+        <button type="button" onclick="document.getElementById('modalCrearTarea').classList.add('hidden')" 
+                class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">
+            Cancelar
+        </button>
+        <button type="submit" class="flex-1 px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-lg transition">
+            Crear
+        </button>
+    </div>
+</form>
     </div>
 </div>
 

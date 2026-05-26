@@ -8,6 +8,8 @@ class Tarea extends Model
 {
     protected $table = 'tareas';
     protected $primaryKey = 'id';
+    
+    // ✅ CORREGIDO: Desactivar timestamps porque la tabla no tiene updated_at
     public $timestamps = false;
 
     protected $fillable = [
@@ -17,6 +19,7 @@ class Tarea extends Model
         'fecha_limite',
         'tipo_documento',
         'creada_por',
+        'created_at',  // ← Agregamos created_at a fillable para poder asignarlo manualmente
     ];
 
     protected $casts = [

@@ -206,7 +206,7 @@
             @error('descripcion') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
         </div>
         
-        <!-- ✅ Tipo de Documento (NUEVO) -->
+        <!--  Tipo de Documento (NUEVO) -->
         <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">Tipo de Documento</label>
             <select name="tipo_documento" required 

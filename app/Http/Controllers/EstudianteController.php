@@ -137,7 +137,7 @@ public function tareas(Request $request)
               ->where('fecha_limite', '<=', now())
               ->orderBy('fecha_limite', 'desc');
               
-    } else { // proximamente
+    } else { 
         
         $query->whereDoesntHave('documentos', function($q) use ($estudiante) {
                     $q->where('estudiante_id', $estudiante->id);

@@ -91,7 +91,7 @@ public function actualizarMateria(Request $request, $id)
         'descripcion' => 'nullable|string|max:500',
         'semestre' => 'required|in:7mo,8vo',
         'gestion_id' => 'required|exists:gestiones,id',
-        'docente_cargo_id' => 'nullable|exists:usuarios,id', // ← Validar que sea nullable
+        'docente_cargo_id' => 'nullable|exists:usuarios,id', 
     ]);
 
     $materia = Materia::findOrFail($id);
@@ -101,7 +101,7 @@ public function actualizarMateria(Request $request, $id)
     $materia->descripcion = $validated['descripcion'] ?? $materia->descripcion;
     $materia->semestre_requerido = $validated['semestre'];
     $materia->gestion_id = $validated['gestion_id'];
-    $materia->docente_cargo_id = $validated['docente_cargo_id']; // ← Esto sí se guarda aunque sea null
+    $materia->docente_cargo_id = $validated['docente_cargo_id']; 
     $materia->save();
 
     return redirect()->route('director.materias')->with('success', 'Materia actualizada correctamente.');
@@ -341,7 +341,7 @@ public function exportarReporte($tipo)
         return $pdf->download('reporte-general-docgest-' . date('Y-m-d') . '.pdf');
         
     } elseif ($tipo === 'excel') {
-    // ✅ EXPORTAR EXCEL - Usar Excel::download()
+    
     return Excel::download(
         new DirectorReportExport(
             $totalEstudiantes, $totalDocentes, $totalMaterias, $totalProyectos,

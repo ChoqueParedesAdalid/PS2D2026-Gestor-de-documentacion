@@ -141,7 +141,7 @@ public function crearTarea(Request $request)
             'fecha_limite' => $validated['fecha_limite'],
             'tipo_documento' => $validated['tipo_documento'], 
             'creada_por' => $docente->id,
-            'created_at' => now(),  // ← Asignar manualmente porque $timestamps = false
+            'created_at' => now(), 
         ];
         
         $tarea = Tarea::create($tareaData);
@@ -214,12 +214,12 @@ public function crearTarea(Request $request)
                 $message = 'Tutor asignado correctamente';
             }
 
-            // ✅ NOTIFICACIÓN CON TIPO CORTO (sin rol_contexto)
+            // 
             Notificacion::crear(
                 usuarioId: $tutor->id,
                 titulo: '🎓 Nuevo estudiante',
                 mensaje: "Has sido asignado como tutor de {$inscripcion->estudiante->nombres} {$inscripcion->estudiante->apellidos}.",
-                tipo: 'asignacion_tutor',  // ← Valor corto compatible con BD
+                tipo: 'asignacion_tutor',  
                 entidadRelacionada: "inscripcion:{$inscripcion->id}"
             );
 
@@ -280,7 +280,7 @@ public function crearTarea(Request $request)
                 'asignado_en' => now(),
             ]);
 
-            // ✅ NOTIFICACIÓN CON TIPO CORTO (sin rol_contexto)
+            
             Notificacion::crear(
                 usuarioId: $tribunal->id,
                 titulo: '⚖️ Nuevo estudiante',

@@ -22,7 +22,7 @@ class TribunalController extends Controller
         $inscripcionIds = AsignacionTribunal::where('tribunal_id', $tribunal->id)
                                            ->where('activo', true)
                                            ->pluck('inscripcion_id')
-                                           ->toArray(); // ✅ Convertir a array
+                                           ->toArray();
 
         $totalDocumentos = Documento::join('inscripciones', 'documentos.estudiante_id', '=', 'inscripciones.estudiante_id')
                                    ->whereIn('inscripciones.id', $inscripcionIds)
@@ -108,7 +108,7 @@ class TribunalController extends Controller
         $inscripcionIds = AsignacionTribunal::where('tribunal_id', $tribunal->id)
                                         ->where('activo', true)
                                         ->pluck('inscripcion_id')
-                                        ->toArray(); // ✅ Convertir a array
+                                        ->toArray();
         
         $materiaIds = Inscripcion::whereIn('id', $inscripcionIds)->pluck('materia_id')->toArray();
         
@@ -120,7 +120,7 @@ class TribunalController extends Controller
         
         // 1. ENTREGADOS: Documentos con "Visto Bueno" del tutor que ESTE tribunal AÚN NO ha revisado
         $entregados = $tarea->documentos->filter(function($doc) use ($tribunal, $inscripcionIds, $tarea) {
-            // ✅ Verificar que el estudiante pertenezca a ESTE tribunal
+            //  Verificar que el estudiante pertenezca a ESTE tribunal
             $estudianteInscripcion = Inscripcion::where('estudiante_id', $doc->estudiante_id)
                                                ->where('materia_id', $tarea->materia_id)
                                                ->first();
@@ -142,7 +142,7 @@ class TribunalController extends Controller
         
         // 2. REVISADOS: Documentos que ESTE tribunal YA revisó
         $revisados = $tarea->documentos->filter(function($doc) use ($tribunal, $inscripcionIds, $tarea) {
-            // ✅ Verificar que el estudiante pertenezca a ESTE tribunal
+            // Verificar que el estudiante pertenezca a ESTE tribunal
             $estudianteInscripcion = Inscripcion::where('estudiante_id', $doc->estudiante_id)
                                                ->where('materia_id', $tarea->materia_id)
                                                ->first();
@@ -181,13 +181,13 @@ class TribunalController extends Controller
     {
         $this->verificarAccesoTribunal();
         $tribunal = Auth::user();
-        // ✅ CORREGIDO: Usar input() en lugar de get()
+        
         $filtro = $request->input('filtro', 'pendientes');
         
         $inscripcionIds = AsignacionTribunal::where('tribunal_id', $tribunal->id)
                                            ->where('activo', true)
                                            ->pluck('inscripcion_id')
-                                           ->toArray(); // ✅ Convertir a array
+                                           ->toArray();
         
         $query = Documento::with(['estudiante', 'tarea', 'estado', 'observaciones'])
                           ->join('inscripciones', 'documentos.estudiante_id', '=', 'inscripciones.estudiante_id')

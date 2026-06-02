@@ -36,16 +36,16 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/mi-perfil', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/mi-perfil/contrasena', [ProfileController::class, 'updatePassword'])->name('profile.password');
 });
+
 // ==================================================
 // RUTAS DE NOTIFICACIONES (Globales para todos los roles)
 // ==================================================
 Route::middleware(['auth'])->group(function () {
-    Route::get('/api/notificaciones/obtener', [App\Http\Controllers\NotificacionController::class, 'obtenerNotificaciones'])->name('notificaciones.api.obtener');
-    Route::post('/notificaciones/{id}/leida', [App\Http\Controllers\NotificacionController::class, 'marcarComoLeida'])->name('notificaciones.marcarLeida');
-    Route::post('/notificaciones/marcar-todas-leidas', [App\Http\Controllers\NotificacionController::class, 'marcarTodasLeidas'])->name('notificaciones.marcarTodasLeidas');
-    Route::get('/notificaciones', [App\Http\Controllers\NotificacionController::class, 'index'])->name('notificaciones.index');
+    Route::get('/api/notificaciones/obtener', [NotificacionController::class, 'obtenerNotificaciones'])->name('notificaciones.api.obtener');
+    Route::post('/notificaciones/{id}/leida', [NotificacionController::class, 'marcarComoLeida'])->name('notificaciones.marcarLeida');
+    Route::post('/notificaciones/marcar-todas-leidas', [NotificacionController::class, 'marcarTodasLeidas'])->name('notificaciones.marcarTodasLeidas');
+    Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('notificaciones.index');
 });
-
 
 // ==================================================
 // RUTAS PROTEGIDAS - TUTOR
@@ -54,7 +54,7 @@ Route::middleware(['auth'])->prefix('tutor')->name('tutor.')->group(function () 
     Route::get('/', [TutorController::class, 'index'])->name('dashboard');
     Route::get('/tutorados', [TutorController::class, 'tutorados'])->name('tutorados');
     Route::get('/documentos', [TutorController::class, 'documentos'])->name('documentos');
-    Route::get('/revisar/{id?}', [TutorController::class, 'revisar'])->name('revisar');
+    Route::get('/revisar/{id}', [TutorController::class, 'revisar'])->name('revisar');
     
     Route::post('/observacion', [TutorController::class, 'storeObservacion'])->name('observacion.store');
     Route::post('/observacion/{id}/corregida', [TutorController::class, 'marcarObservacionCorregida'])->name('observacion.corregida');
@@ -76,22 +76,21 @@ Route::middleware(['auth'])->prefix('tutor')->name('tutor.')->group(function () 
 // ==================================================
 Route::middleware(['auth'])->prefix('estudiante')->name('estudiante.')->group(function () {
     Route::get('/', [EstudianteController::class, 'index'])->name('dashboard');
-    Route::get('/tareas', [EstudianteController::class, 'tareas'])->name('tareas');
-    Route::post('/tareas/{tareaId}/subir', [EstudianteController::class, 'subirDocumento'])->name('tareas.subir');
-    Route::get('/documentos/{documentoId}/observaciones', [EstudianteController::class, 'verObservaciones'])->name('documentos.observaciones');
-    Route::get('/documentos/{documentoId}/descargar', [EstudianteController::class, 'descargarDocumento'])->name('documentos.descargar');
-
-    // Tareas
+    
+    // Tareas (SIN DUPLICADOS)
     Route::get('/tareas', [EstudianteController::class, 'tareas'])->name('tareas');
     Route::get('/tareas/ver/{tareaId}', [EstudianteController::class, 'verTarea'])->name('tareas.ver');
     Route::post('/tareas/{tareaId}/subir', [EstudianteController::class, 'subirDocumento'])->name('tareas.subir');
+    
+    // Documentos
+    Route::get('/documentos/{documentoId}/observaciones', [EstudianteController::class, 'verObservaciones'])->name('documentos.observaciones');
+    Route::get('/documentos/{documentoId}/descargar', [EstudianteController::class, 'descargarDocumento'])->name('documentos.descargar');
 });
 
 // ==================================================
 // RUTAS PROTEGIDAS - TRIBUNAL
 // ==================================================
-
-Route::middleware(['auth'])->prefix('tribunal')->name('tribunal.')->group(function ()  {
+Route::middleware(['auth'])->prefix('tribunal')->name('tribunal.')->group(function () {
     Route::get('/', [TribunalController::class, 'index'])->name('dashboard');
     Route::get('/estudiantes', [TribunalController::class, 'estudiantes'])->name('estudiantes');
     Route::get('/tareas', [TribunalController::class, 'tareas'])->name('tareas');
@@ -103,13 +102,11 @@ Route::middleware(['auth'])->prefix('tribunal')->name('tribunal.')->group(functi
     Route::delete('/observacion/{id}', [TribunalController::class, 'eliminarObservacion'])->name('observacion.eliminar');
     Route::post('/documento/{id}/aprobar', [TribunalController::class, 'aprobarDocumento'])->name('documento.aprobar');
     Route::post('/documento/{id}/solicitar-correcciones', [TribunalController::class, 'solicitarCorrecciones'])->name('documento.corregir');
-
 });
 
 // ==================================================
 // RUTAS PROTEGIDAS - DIRECTOR
 // ==================================================
-
 Route::middleware(['auth'])->prefix('director')->name('director.')->group(function () {
     
     // Dashboard
@@ -124,7 +121,7 @@ Route::middleware(['auth'])->prefix('director')->name('director.')->group(functi
     
     // === DOCENTES ===
     Route::get('/docentes', [DirectorController::class, 'docentes'])->name('docentes');
-    Route::post('/docentes/crear', [DirectorController::class, 'crearDocente'])->name('docentes.crear'); // ← Nombre corregido
+    Route::post('/docentes/crear', [DirectorController::class, 'crearDocente'])->name('docentes.crear');
     Route::put('/docentes/{id}/actualizar-rol', [DirectorController::class, 'actualizarRolDocente'])->name('actualizarRolDocente');
     Route::get('/docentes/{id}', [DirectorController::class, 'verDocente'])->name('docentes.ver');
     Route::get('/docentes/{id}/editar', [DirectorController::class, 'editarDocente'])->name('docentes.editar');
@@ -160,7 +157,6 @@ Route::middleware(['auth'])->prefix('docente-cargo')->name('docente.')->group(fu
     Route::get('/materia/{materiaId}/estudiantes', [DocenteCargoController::class, 'estudiantes'])->name('estudiantes');
     Route::post('/estudiantes/registrar', [DocenteCargoController::class, 'registrarEstudiante'])->name('estudiantes.registrar');
     
-    
     Route::post('/estudiantes/{inscripcionId}/asignar-tutor', [DocenteCargoController::class, 'asignarTutor'])->name('asignarTutor');
     Route::post('/estudiantes/{inscripcionId}/asignar-tribunal', [DocenteCargoController::class, 'asignarTribunal'])->name('asignarTribunal');
     Route::post('/estudiantes/{inscripcionId}/actualizar-proyecto', [DocenteCargoController::class, 'actualizarProyecto'])->name('actualizarProyecto');
@@ -168,9 +164,6 @@ Route::middleware(['auth'])->prefix('docente-cargo')->name('docente.')->group(fu
     // Gestionar tareas
     Route::get('/materia/{materiaId}/tareas', [DocenteCargoController::class, 'tareas'])->name('tareas');
     Route::post('/tareas/crear', [DocenteCargoController::class, 'crearTarea'])->name('tareas.crear');
-    Route::get('/tareas/ver/{tareaId}', [DocenteCargoController::class, 'verTarea'])->name('tareas-ver');
-
-    // Ver detalles de tarea y actualizar
     Route::get('/tareas/ver/{tareaId}', [DocenteCargoController::class, 'verTarea'])->name('tareas-ver');
     Route::put('/tareas/{tareaId}', [DocenteCargoController::class, 'actualizarTarea'])->name('tareas.actualizar');
 });

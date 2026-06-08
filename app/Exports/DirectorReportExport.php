@@ -12,14 +12,20 @@ class DirectorReportExport implements FromCollection, WithHeadings, WithTitle, W
 {
     protected $data;
 
-    public function __construct($totalEstudiantes, $totalDocentes, $totalMaterias, $totalProyectos, $documentosPorEstado, $proyectosPorMateria)
-    {
-        $this->data = compact('totalEstudiantes', 'totalDocentes', 'totalMaterias', 'totalProyectos', 'documentosPorEstado', 'proyectosPorMateria');
+    public function __construct(
+        $totalEstudiantes, $totalDocentes, $totalMaterias, $totalProyectos,
+        $documentosPorEstado, $proyectosPorMateria,
+        $progresoPorMateria = null, $cargaTutores = null
+    ) {
+        $this->data = compact(
+            'totalEstudiantes', 'totalDocentes', 'totalMaterias', 'totalProyectos',
+            'documentosPorEstado', 'proyectosPorMateria',
+            'progresoPorMateria', 'cargaTutores'
+        );
     }
 
     public function collection()
     {
-        // Hoja 1: Resumen
         $rows = [
             ['REPORTE GENERAL - DOCGEST', ''],
             ['Generado el:', date('d/m/Y H:i')],
@@ -31,15 +37,13 @@ class DirectorReportExport implements FromCollection, WithHeadings, WithTitle, W
             ['Total Proyectos', $this->data['totalProyectos']],
         ];
 
-        // Documentos por estado
         $rows[] = [''];
         $rows[] = ['DOCUMENTOS POR ESTADO', ''];
         $rows[] = ['Estado', 'Cantidad'];
         foreach ($this->data['documentosPorEstado'] ?? [] as $estado => $total) {
-            $rows[] = [ucfirst($estado), $total];
+            $rows[] = [ucfirst(str_replace('_', ' ', $estado)), $total];
         }
 
-        // Top materias
         $rows[] = [''];
         $rows[] = ['TOP MATERIAS CON PROYECTOS', ''];
         $rows[] = ['Materia', 'Proyectos'];
@@ -49,12 +53,36 @@ class DirectorReportExport implements FromCollection, WithHeadings, WithTitle, W
             $rows[] = [$materia, $total];
         }
 
+        if ($this->data['progresoPorMateria']) {
+            $rows[] = [''];
+            $rows[] = ['PROGRESO POR MATERIA', ''];
+            $rows[] = ['Materia', 'Estudiantes', 'Tareas', 'Entregas', '% Avance'];
+            foreach ($this->data['progresoPorMateria'] as $item) {
+                $rows[] = [
+                    $item['nombre'],
+                    $item['estudiantes'],
+                    $item['tareas'],
+                    $item['entregas_unicas'] . '/' . $item['total_esperado'],
+                    $item['porcentaje'] . '%'
+                ];
+            }
+        }
+
+        if ($this->data['cargaTutores']) {
+            $rows[] = [''];
+            $rows[] = ['CARGA DE TUTORES', ''];
+            $rows[] = ['Tutor', 'Tutorados', 'Documentos Pendientes'];
+            foreach ($this->data['cargaTutores'] as $tutor) {
+                $rows[] = [$tutor['nombre'], $tutor['tutorados'], $tutor['pendientes']];
+            }
+        }
+
         return collect($rows);
     }
 
     public function headings(): array
     {
-        return []; // Usamos collection() directamente
+        return [];
     }
 
     public function title(): string
@@ -65,8 +93,8 @@ class DirectorReportExport implements FromCollection, WithHeadings, WithTitle, W
     public function styles(Worksheet $sheet)
     {
         return [
-            1 => ['font' => ['bold' => true, 'size' => 14], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '6D2121']], 'font' => ['color' => ['rgb' => 'FFFFFF']]],
-            5 => ['font' => ['bold' => true]],
+            1 => ['font' => ['bold' => true, 'size' => 14], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '6D2121']]],
+            4 => ['font' => ['bold' => true]],
             10 => ['font' => ['bold' => true]],
             12 => ['font' => ['bold' => true]],
         ];

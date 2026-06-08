@@ -159,6 +159,7 @@ public function actualizarMateria(Request $request, $id)
 
     public function verDocente($id)
     {
+        // Mostrar detalles del docente, incluyendo materias asignadas como docente_cargo, tutorías y tribunales
         if (!Auth::user()->esDirector()) abort(403);
         $docente = User::with(['rol', 'asignacionesTutor', 'asignacionesTribunal'])->findOrFail($id);
         return view('director.docentes-ver', compact('docente'));
@@ -249,111 +250,301 @@ public function actualizarMateria(Request $request, $id)
         return view('director.documentos', compact('documentos'));
     }
 /**
- * Mostrar dashboard de reportes para Director
+ * Mostrar dashboard de reportes para Director con estadísticas generales y gráficos
  */
-public function reportes()
-{
-    $director = Auth::user();
-    
-    // Estadísticas generales
-    $totalEstudiantes = User::join('roles', 'usuarios.role_id', '=', 'roles.id')
-                           ->where('roles.nombre', 'estudiante')
-                           ->where('usuarios.activo', true)
-                           ->count();
-    
-    $totalDocentes = User::join('roles', 'usuarios.role_id', '=', 'roles.id')
-                        ->whereIn('roles.nombre', ['docente', 'docente_cargo', 'tutor', 'tribunal'])
-                        ->where('usuarios.activo', true)
-                        ->count();
-    
-    $totalMaterias = Materia::count();
-    
-    $totalProyectos = Inscripcion::where('estado_inscripcion', 'activo')->count();
-    
-    // Documentos por estado
-    $documentosPorEstado =Documento::join('estados_documento', 'documentos.estado_id', '=', 'estados_documento.id')
-                                               ->select('estados_documento.nombre as estado', \DB::raw('COUNT(*) as total'))
-                                               ->groupBy('estados_documento.nombre')
-                                               ->pluck('total', 'estado');
-    
-    // Entregas por mes (últimos 6 meses)
-    $entregasPorMes = Documento::selectRaw('MONTH(entregado_en) as mes, COUNT(*) as total')
-                                          ->whereYear('entregado_en', date('Y'))
-                                          ->groupBy('mes')
-                                          ->orderBy('mes')
-                                          ->pluck('total', 'mes');
-    
-    // Proyectos por materia
-    $proyectosPorMateria = Inscripcion::join('materias', 'inscripciones.materia_id', '=', 'materias.id')
-                                                  ->where('inscripciones.estado_inscripcion', 'activo')
-                                                  ->select('materias.nombre as materia', \DB::raw('COUNT(*) as total'))
-                                                  ->groupBy('materias.nombre')
-                                                  ->orderByDesc('total')
-                                                  ->take(5)
-                                                  ->get();
-    
-    return view('director.reportes', compact(
-        'totalEstudiantes', 'totalDocentes', 'totalMaterias', 'totalProyectos',
-        'documentosPorEstado', 'entregasPorMes', 'proyectosPorMateria'
-    ));
-}
+  
+    public function reportes()
+    {
+        $director = Auth::user();
+        
+        // === ESTADÍSTICAS GENERALES ===
+        $totalEstudiantes = User::join('roles', 'usuarios.role_id', '=', 'roles.id')
+            ->where('roles.nombre', 'estudiante')
+            ->where('usuarios.activo', true)
+            ->count();
+        
+        $totalDocentes = User::join('roles', 'usuarios.role_id', '=', 'roles.id')
+            ->whereIn('roles.nombre', ['docente', 'docente_cargo', 'tutor', 'tribunal'])
+            ->where('usuarios.activo', true)
+            ->count();
+        
+        $totalMaterias = Materia::count();
+        $totalProyectos = Inscripcion::where('estado_inscripcion', 'activo')->count();
+        
+        // Documentos por estado
+        $documentosPorEstado = Documento::join('estados_documento', 'documentos.estado_id', '=', 'estados_documento.id')
+            ->select('estados_documento.nombre as estado', \DB::raw('COUNT(*) as total'))
+            ->groupBy('estados_documento.nombre')
+            ->pluck('total', 'estado');
+        
+        // Entregas por mes
+        $entregasPorMes = Documento::selectRaw('MONTH(entregado_en) as mes, COUNT(*) as total')
+            ->whereYear('entregado_en', date('Y'))
+            ->groupBy('mes')
+            ->orderBy('mes')
+            ->pluck('total', 'mes');
+        
+        // Proyectos por materia
+        $proyectosPorMateria = Inscripcion::join('materias', 'inscripciones.materia_id', '=', 'materias.id')
+            ->where('inscripciones.estado_inscripcion', 'activo')
+            ->select('materias.nombre as materia', \DB::raw('COUNT(*) as total'))
+            ->groupBy('materias.nombre')
+            ->orderByDesc('total')
+            ->take(5)
+            ->get();
 
+        // === PROGRESO POR MATERIA (CORREGIDO) ===
+        $progresoPorMateria = Materia::with(['inscripciones' => function($q) {
+                $q->where('estado_inscripcion', 'activo');
+            }, 'tareas'])
+            ->get()
+            ->map(function($materia) {
+                $estudiantesActivos = $materia->inscripciones->count();
+                $tareasActivas = $materia->tareas->count();
+                
+                // Entregas ÚNICAS por estudiante-tarea (solo la última versión de cada tarea)
+                $entregasUnicas = 0;
+                if ($estudiantesActivos > 0 && $tareasActivas > 0) {
+                    foreach ($materia->inscripciones as $inscripcion) {
+                        foreach ($materia->tareas as $tarea) {
+                            $tieneEntrega = Documento::where('estudiante_id', $inscripcion->estudiante_id)
+                                ->where('tarea_id', $tarea->id)
+                                ->exists();
+                            if ($tieneEntrega) {
+                                $entregasUnicas++;
+                            }
+                        }
+                    }
+                }
+                
+                $totalEsperado = $estudiantesActivos * $tareasActivas;
+                $porcentaje = $totalEsperado > 0 
+                    ? round(($entregasUnicas / $totalEsperado) * 100, 1) 
+                    : 0;
 
-/**
- * Exportar reporte (PDF/Excel)
- */
-public function exportarReporte($tipo)
-{
-    // Obtener los mismos datos que en reportes()
-    $totalEstudiantes = User::join('roles', 'usuarios.role_id', '=', 'roles.id')
-                           ->where('roles.nombre', 'estudiante')
-                           ->where('usuarios.activo', true)
-                           ->count();
-    
-    $totalDocentes = User::join('roles', 'usuarios.role_id', '=', 'roles.id')
-                        ->whereIn('roles.nombre', ['docente', 'docente_cargo', 'tutor', 'tribunal'])
-                        ->where('usuarios.activo', true)
-                        ->count();
-    
-    $totalMaterias = Materia::count();
-    $totalProyectos = Inscripcion::where('estado_inscripcion', 'activo')->count();
-    
-    $documentosPorEstado = Documento::join('estados_documento', 'documentos.estado_id', '=', 'estados_documento.id')
-                                               ->select('estados_documento.nombre as estado', \DB::raw('COUNT(*) as total'))
-                                               ->groupBy('estados_documento.nombre')
-                                               ->pluck('total', 'estado');
-    
-    $proyectosPorMateria = Inscripcion::join('materias', 'inscripciones.materia_id', '=', 'materias.id')
-                                                  ->where('inscripciones.estado_inscripcion', 'activo')
-                                                  ->select('materias.nombre as materia', \DB::raw('COUNT(*) as total'))
-                                                  ->groupBy('materias.nombre')
-                                                  ->orderByDesc('total')
-                                                  ->limit(5)
-                                                  ->get();
+                return [
+                    'nombre' => $materia->nombre,
+                    'estudiantes' => $estudiantesActivos,
+                    'tareas' => $tareasActivas,
+                    'entregas_unicas' => $entregasUnicas,
+                    'total_esperado' => $totalEsperado,
+                    'porcentaje' => min($porcentaje, 100)
+                ];
+            });
 
-    if ($tipo === 'pdf') {
-        //  EXPORTAR PDF
-        $pdf = Pdf::loadView('director.reportes.pdf', compact(
+        // === RENDIMIENTO DE ESTUDIANTES (CORREGIDO) ===
+        $rendimientoEstudiantes = Inscripcion::where('estado_inscripcion', 'activo')
+            ->with(['estudiante', 'tutores', 'materia'])
+            ->get()
+            ->map(function($inscripcion) {
+                $estudiante = $inscripcion->estudiante;
+                $tareas = \App\Models\Tarea::where('materia_id', $inscripcion->materia_id)->get();
+                
+                $tareasTotales = $tareas->count();
+                $entregasUnicas = 0;
+                $tareasVencidas = 0;
+                
+                foreach ($tareas as $tarea) {
+                    // ¿Entregó al menos una versión?
+                    $entrego = Documento::where('estudiante_id', $estudiante->id)
+                        ->where('tarea_id', $tarea->id)
+                        ->exists();
+                    if ($entrego) {
+                        $entregasUnicas++;
+                    }
+                    
+                    // ¿Venció y no entregó?
+                    if ($tarea->fecha_limite < now() && !$entrego) {
+                        $tareasVencidas++;
+                    }
+                }
+                
+                return [
+                    'estudiante' => $estudiante->nombre_completo,
+                    'materia' => $inscripcion->materia->nombre ?? 'N/A',
+                    'tutor' => $inscripcion->tutores->first()?->nombre_completo ?? 'Sin asignar',
+                    'tareas_totales' => $tareasTotales,
+                    'entregas' => $entregasUnicas,
+                    'vencidas' => $tareasVencidas,
+                    'proyecto' => $inscripcion->titulo_proyecto ?? 'Sin título',
+                    'porcentaje' => $tareasTotales > 0 ? min(round(($entregasUnicas / $tareasTotales) * 100, 1), 100) : 0
+                ];
+            });
+
+        // === CARGA DE TUTORES ===
+        $cargaTutores = User::whereHas('rol', function($q) {
+                $q->where('nombre', 'tutor');
+            })
+            ->where('activo', true)
+            ->withCount(['asignacionesTutor' => function($q) {
+                $q->where('activo', true);
+            }])
+            ->get()
+            ->map(function($tutor) {
+                $inscripcionIds = $tutor->asignacionesTutor()->where('activo', true)->pluck('inscripcion_id');
+                $documentosPendientes = Documento::whereIn('estudiante_id', function($q) use ($inscripcionIds) {
+                    $q->select('estudiante_id')->from('inscripciones')->whereIn('id', $inscripcionIds);
+                })->where('estado_id', 2)->count();
+
+                return [
+                    'nombre' => $tutor->nombre_completo,
+                    'tutorados' => $tutor->asignaciones_tutor_count,
+                    'pendientes' => $documentosPendientes
+                ];
+            });
+
+        // === ALERTAS Y VENCIMIENTOS ===
+        $tareasProximas = \App\Models\Tarea::where('fecha_limite', '<=', now()->addDays(7))
+            ->where('fecha_limite', '>=', now())
+            ->with('materia')
+            ->orderBy('fecha_limite')
+            ->get();
+
+        $estudiantesRezagados = Inscripcion::where('estado_inscripcion', 'activo')
+            ->whereDoesntHave('estudiante.documentos', function($q) {
+                $q->where('entregado_en', '>=', now()->subDays(30));
+            })
+            ->with(['estudiante', 'tutores'])
+            ->take(10)
+            ->get();
+
+        $tareasVencidas = \App\Models\Tarea::where('fecha_limite', '<', now())
+            ->with(['materia', 'documentos'])
+            ->get()
+            ->map(function($tarea) {
+                $estudiantesSinEntregar = Inscripcion::where('materia_id', $tarea->materia_id)
+                    ->where('estado_inscripcion', 'activo')
+                    ->whereDoesntHave('estudiante.documentos', function($q) use ($tarea) {
+                        $q->where('tarea_id', $tarea->id);
+                    })->count();
+
+                return [
+                    'titulo' => $tarea->titulo,
+                    'materia' => $tarea->materia->nombre ?? 'N/A',
+                    'fecha_limite' => $tarea->fecha_limite->format('d/m/Y'),
+                    'estudiantes_faltantes' => $estudiantesSinEntregar
+                ];
+            });
+
+        return view('director.reportes', compact(
             'totalEstudiantes', 'totalDocentes', 'totalMaterias', 'totalProyectos',
-            'documentosPorEstado', 'proyectosPorMateria'
+            'documentosPorEstado', 'entregasPorMes', 'proyectosPorMateria',
+            'progresoPorMateria', 'rendimientoEstudiantes', 'cargaTutores',
+            'tareasProximas', 'estudiantesRezagados', 'tareasVencidas'
         ));
-        
-        return $pdf->download('reporte-general-docgest-' . date('Y-m-d') . '.pdf');
-        
-    } elseif ($tipo === 'excel') {
-    
-    return Excel::download(
-        new DirectorReportExport(
-            $totalEstudiantes, $totalDocentes, $totalMaterias, $totalProyectos,
-            $documentosPorEstado, $proyectosPorMateria
-        ),
-        'reporte-general-docgest-' . date('Y-m-d') . '.xlsx'
-    );
     }
-    
-    return back()->with('error', 'Tipo de exportación no válido.');
-}
-    
 
-    
+    /**
+     * Exportar reporte (PDF/Excel)
+     */
+    public function exportarReporte($tipo)
+    {
+        // === ESTADÍSTICAS GENERALES ===
+        $totalEstudiantes = User::join('roles', 'usuarios.role_id', '=', 'roles.id')
+            ->where('roles.nombre', 'estudiante')
+            ->where('usuarios.activo', true)
+            ->count();
+        
+        $totalDocentes = User::join('roles', 'usuarios.role_id', '=', 'roles.id')
+            ->whereIn('roles.nombre', ['docente', 'docente_cargo', 'tutor', 'tribunal'])
+            ->where('usuarios.activo', true)
+            ->count();
+        
+        $totalMaterias = Materia::count();
+        $totalProyectos = Inscripcion::where('estado_inscripcion', 'activo')->count();
+        
+        $documentosPorEstado = Documento::join('estados_documento', 'documentos.estado_id', '=', 'estados_documento.id')
+            ->select('estados_documento.nombre as estado', \DB::raw('COUNT(*) as total'))
+            ->groupBy('estados_documento.nombre')
+            ->pluck('total', 'estado');
+        
+        $proyectosPorMateria = Inscripcion::join('materias', 'inscripciones.materia_id', '=', 'materias.id')
+            ->where('inscripciones.estado_inscripcion', 'activo')
+            ->select('materias.nombre as materia', \DB::raw('COUNT(*) as total'))
+            ->groupBy('materias.nombre')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->get();
+
+        // PROGRESO POR MATERIA (CORREGIDO)
+        $progresoPorMateria = Materia::with(['inscripciones' => function($q) {
+                $q->where('estado_inscripcion', 'activo');
+            }, 'tareas'])
+            ->get()
+            ->map(function($materia) {
+                $estudiantesActivos = $materia->inscripciones->count();
+                $tareasActivas = $materia->tareas->count();
+                
+                $entregasUnicas = 0;
+                if ($estudiantesActivos > 0 && $tareasActivas > 0) {
+                    foreach ($materia->inscripciones as $inscripcion) {
+                        foreach ($materia->tareas as $tarea) {
+                            $tieneEntrega = Documento::where('estudiante_id', $inscripcion->estudiante_id)
+                                ->where('tarea_id', $tarea->id)
+                                ->exists();
+                            if ($tieneEntrega) {
+                                $entregasUnicas++;
+                            }
+                        }
+                    }
+                }
+                
+                $totalEsperado = $estudiantesActivos * $tareasActivas;
+                $porcentaje = $totalEsperado > 0 
+                    ? round(($entregasUnicas / $totalEsperado) * 100, 1) 
+                    : 0;
+
+                return [
+                    'nombre' => $materia->nombre,
+                    'estudiantes' => $estudiantesActivos,
+                    'tareas' => $tareasActivas,
+                    'entregas_unicas' => $entregasUnicas,
+                    'total_esperado' => $totalEsperado,
+                    'porcentaje' => min($porcentaje, 100)
+                ];
+            });
+
+        // CARGA DE TUTORES
+        $cargaTutores = User::whereHas('rol', function($q) {
+                $q->where('nombre', 'tutor');
+            })
+            ->where('activo', true)
+            ->withCount(['asignacionesTutor' => function($q) {
+                $q->where('activo', true);
+            }])
+            ->get()
+            ->map(function($tutor) {
+                $inscripcionIds = $tutor->asignacionesTutor()->where('activo', true)->pluck('inscripcion_id');
+                $documentosPendientes = Documento::whereIn('estudiante_id', function($q) use ($inscripcionIds) {
+                    $q->select('estudiante_id')->from('inscripciones')->whereIn('id', $inscripcionIds);
+                })->where('estado_id', 2)->count();
+
+                return [
+                    'nombre' => $tutor->nombre_completo,
+                    'tutorados' => $tutor->asignaciones_tutor_count,
+                    'pendientes' => $documentosPendientes
+                ];
+            });
+
+        if ($tipo === 'pdf') {
+            $pdf = Pdf::loadView('director.reportes.pdf', compact(
+                'totalEstudiantes', 'totalDocentes', 'totalMaterias', 'totalProyectos',
+                'documentosPorEstado', 'proyectosPorMateria',
+                'progresoPorMateria', 'cargaTutores'
+            ));
+            return $pdf->download('reporte-docgest-' . date('Y-m-d') . '.pdf');
+
+        } elseif ($tipo === 'excel') {
+            return Excel::download(
+                new DirectorReportExport(
+                    $totalEstudiantes, $totalDocentes, $totalMaterias, $totalProyectos,
+                    $documentosPorEstado, $proyectosPorMateria,
+                    $progresoPorMateria, $cargaTutores
+                ),
+                'reporte-docgest-' . date('Y-m-d') . '.xlsx'
+            );
+        }
+
+        return back()->with('error', 'Tipo de exportación no válido.');
+    }
 }
